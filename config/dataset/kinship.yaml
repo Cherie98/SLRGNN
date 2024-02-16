@@ -1,0 +1,27 @@
+# @package _global_
+
+dataset: kinship
+
+epoch: 600
+batch_size: 256
+learning_rate: 1.5e-3
+h_dim: 1000
+pred_rel_w: False
+label_smooth: 0.1
+
+# graph
+kg_layer: 2
+rm_rate: 0.5  # randomly removing training edges
+ent_drop: 0.3
+rel_drop: 0.1
+comp_op: mul   # add/mul
+bn: False  # batchnorn
+
+# ConvE
+k_h: 25
+k_w: 40
+conv_drop: 0.3
+ent_drop_pred: 0.3
+fc_drop: 0.5
+ker_sz: 8
+out_channel: 200
