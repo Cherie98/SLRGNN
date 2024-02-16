@@ -22,7 +22,7 @@ def train_step(model, data, kg, optimizer, scheduler):
 
     (src, rel, _), label, rm_edges = data
     src, rel, label, rm_edges = src.to(device), rel.to(device), label.to(device), rm_edges.to(device)
-    # randomly remove the training edges
+
     if cfg.rm_rate > 0:
         kg.remove_edges(rm_edges)
     score = model(src, rel, kg)
@@ -80,28 +80,25 @@ def evaluate(model, set_flag, kg, record=False) -> dict:
     }
     hits_range = [1, 3, 10, 100, 1000, round(0.5*n_ent)]
     with torch.no_grad():
-        # aggregate the embedding
         ent_emb, rel_emb = model.aggragate_emb(kg)
         for i, data in enumerate(eval_loader):
-            # filter_bias: (bs, n_ent)
             (src, rel, dst), filter_bias, mode = data
             src, rel, dst, filter_bias = src.to(device), rel.to(device), dst.to(device), filter_bias.to(device)
-            # (bs, n_ent)
+
             score = model.predictor(ent_emb[src], rel_emb[rel], ent_emb)
             score = score + filter_bias
 
             pos_inds = dst
             batch_size = filter_bias.shape[0]
             pos_score = score[torch.arange(batch_size), pos_inds].unsqueeze(dim=1)
-            # compare the positive value with negative values to compute rank
-            # when values equal, take the mean of upper and lower bound
-            compare_up = torch.gt(score, pos_score)  # (bs, entity_num), >
-            compare_low = torch.ge(score, pos_score)  # (bs, entity_num), >=
-            ranking_up = compare_up.to(dtype=torch.float).sum(dim=1) + 1  # (bs, )
-            ranking_low = compare_low.to(dtype=torch.float).sum(dim=1)  # include the pos one itself, no need to +1
+
+            compare_up = torch.gt(score, pos_score)
+            compare_low = torch.ge(score, pos_score)
+            ranking_up = compare_up.to(dtype=torch.float).sum(dim=1) + 1
+            ranking_low = compare_low.to(dtype=torch.float).sum(dim=1)
             ranking = (ranking_up + ranking_low) / 2
             if record:
-                rank = torch.stack([src, rel, dst, ranking], dim=1)  # (bs, 4)
+                rank = torch.stack([src, rel, dst, ranking], dim=1)
                 metrics['ranking'].append(rank)
 
             results = metrics[mode]
@@ -122,11 +119,9 @@ def evaluate(model, set_flag, kg, record=False) -> dict:
             for j in hits_range:
                 results['HITS@{}'.format(j)] /= results['n_data']
 
-        # average the hb and tb values to get the final reports
         for k, value in metrics['head_batch'].items():
             metrics['average'][k] = (metrics['head_batch'][k] + metrics['tail_batch'][k]) / 2
 
-        # sort in the ranking order
         if record:
             metrics['ranking'] = torch.cat(metrics['ranking'], dim=0).tolist()
             metrics['ranking'] = sorted(metrics['ranking'], key=lambda x: x[3], reverse=True)

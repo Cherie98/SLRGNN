@@ -26,7 +26,7 @@ def save_model(model, save_variables):
     pickle.dump(cfg, open('config.pickle', 'wb'))
 
     state_dict = {
-        'model_state_dict': model.state_dict(),  # model parameters
+        'model_state_dict': model.state_dict(),
         **save_variables
     }
 
@@ -80,10 +80,8 @@ def main(config: DictConfig):
     cfg = utils.get_global_config()
     assert cfg.dataset in cfg.dataset_list
 
-    # remove randomness
     utils.remove_randomness()
 
-    # print configuration
     logging.info('\n------Config------\n {}'.format(utils.filter_config(cfg)))
 
     # backup the code and configuration
@@ -101,7 +99,6 @@ def main(config: DictConfig):
     model = SE_GNN(cfg.h_dim)
     model = model.to(device)
 
-    # load the knowledge graph
     src, dst, rel, hr2eid, rt2eid = construct_kg('train', directed=False)
     kg = get_kg(src, dst, rel, device)
     kg_out_deg = kg.out_degrees(torch.arange(kg.number_of_nodes(), device=device))
@@ -123,7 +120,6 @@ def main(config: DictConfig):
         logging.info('Parameter %s: %s, require_grad = %s' %
                      (name, str(param.size()), str(param.requires_grad)))
 
-    # set optimizer and scheduler
     n_epoch = cfg.epoch
     single_epoch_step = len(train_loader)
     max_steps = n_epoch * single_epoch_step
@@ -144,7 +140,7 @@ def main(config: DictConfig):
         for batch_data in train_loader:
             train_log = train_step(model, batch_data, kg, optimizer, scheduler)
             loss_list.append(train_log['loss'])
-            # get a new kg, since in previous kg some edges are removed.
+
             if cfg.rm_rate > 0:
                 kg = get_kg(src, dst, rel, device)
 
@@ -177,15 +173,13 @@ def main(config: DictConfig):
         msg += val_msg
         logging.info(msg)
 
-        # whether early stopping
         if epoch - last_improve_epoch > cfg.max_no_improve:
             logging.info("Long time no improvenment, stop training...")
             break
 
     logging.info('Training end...')
 
-    # evaluate train and test set
-    # load best model
+
     checkpoint = torch.load('checkpoint.torch')
     model.load_state_dict(checkpoint['model_state_dict'])
 

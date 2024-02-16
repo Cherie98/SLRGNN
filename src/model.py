@@ -64,8 +64,7 @@ class RulE(torch.nn.Module):
             b=self.embedding_range.item()
         )
         
-        
-        # RNN parameters
+
         self.rnn_hidden_dim = rnn_hidden_dim
         self.num_layers = num_layers
         self.rnn = torch.nn.LSTM(self.relation_dim + self.rule_dim, self.rnn_hidden_dim, self.num_layers, batch_first=True)
@@ -73,20 +72,13 @@ class RulE(torch.nn.Module):
         
 
     def set_rules(self, input):
-        # input: [rule_id, rule_head, rule_body]
-
         logging.info('read {} rules from list.'.format(len(input)))
         self.num_rules = len(input)
-
-        # rule_body's length
         self.max_length = max([len(rule[2:]) for rule in input])
-
-
         self.relation2rules = [[] for r in range(self.num_relations*2)]
         for rule in input:
             relation = rule[1]
             self.relation2rules[relation].append([rule[0], (rule[1], rule[2:])])
-        
 
         self.rule_features = []
         self.rule_masks = []
@@ -209,7 +201,6 @@ class RulE(torch.nn.Module):
         score = self.gamma_rule.item() - score.sum(dim=2)
         
         return score
-    
 
 
     def RNN_ruleE(self, rules, mask):
@@ -254,8 +245,7 @@ class RulE(torch.nn.Module):
         
         rule_embedding = self.rule_emb(rules[:,:,0]).unsqueeze(2).expand(-1, -1, inputs.size(2),-1)
         embedding = self.relation_embedding(inputs_com) * relations_flag
-        
-        # rule_head
+
         embedding_r = self.relation_embedding(rules[:,:,1]%self.num_relations)
         relations_flag = torch.pow(-1,rules[:,:,1] // self.num_relations).unsqueeze(-1)
         embedding_r *= relations_flag
@@ -311,10 +301,8 @@ class RulE(torch.nn.Module):
         
         rule_emb = self.rules_weight_emb[rule_index]
 
-        # mlp_feature = self.mlp_feature[rule_index] * rule_emb.unsqueeze(-1)
         mlp_feature = self.mlp_feature[rule_index]
 
-        # output = self.rule_to_entity.forward(rule_count, mlp_feature)
         output = self.rule_to_entity(rule_count, rule_emb, mlp_feature)
     
         feature = output

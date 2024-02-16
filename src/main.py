@@ -40,8 +40,7 @@ def parse_args(args=None):
     parser.add_argument('-cpu', '--cpu_num', default=10, type=int)
 
     parser.add_argument('--seed',default=800, type=int, help='seed')
-    
-    # pre train process (KGE + rulE)
+
     parser.add_argument('-b', '--batch_size', default=256, type=int)
     parser.add_argument('-n', '--negative_sample_size', default=256 , type=int)
     parser.add_argument('--rule_batch_size',default=128,type=int, help='rule batch size')
@@ -70,11 +69,9 @@ def parse_args(args=None):
     parser.add_argument('-init', '--init_checkpoint_config', default="../config/umls_config.json", type=str)
     parser.add_argument('-save', '--save_path', default=None, type=str)
 
-    # RNN parameters
     parser.add_argument('--rnn_hidden_dim', default=512, type=int)
     parser.add_argument('--num_layers', default=2, type=int)
 
-    # grounding training process
     parser.add_argument('--rule_dim', default=100, type=int)
     parser.add_argument('--mlp_rule_dim', default=100, type=int)
     parser.add_argument('--alpha', default=5.0, type=int, help='weight the KGE score')
@@ -94,7 +91,6 @@ def main(args):
         args = load_config(args.init_checkpoint_config)
         args = args[0]
 
-    # wandb.init(project='RulE',group='RotatE', name = args.save_path, config=args)
     if args.save_path is None:
         args.save_path = os.path.join('../outputs', datetime.now().strftime('%Y%m-%d%H-%M%S'))
     else:
@@ -108,7 +104,6 @@ def main(args):
     set_logger(args.save_path)
     set_seed(args.seed)
 
-    # for grounding dataset
     graph = KnowledgeGraph(args.data_path)
     train_set = TrainDataset(graph, args.g_batch_size)
     valid_set = ValidDataset(graph, args.g_batch_size)
@@ -132,8 +127,6 @@ def main(args):
         device = torch.device('cuda')
     else:
         device = torch.device('cpu')
-   
-    # For pre-training 
 
     pre_trainer = PreTrainer(
         graph=graph,
@@ -151,7 +144,6 @@ def main(args):
     logging.info('Finishing pre-training!')
 
     print("loading RulE trainer......")
-    # load rule embedding and KGE embedding
     checkpoint = torch.load(os.path.join(args.save_path, 'checkpoint'))
     RulE_model.load_state_dict(checkpoint['model'])
     logging.info('Test the results of pre-training')

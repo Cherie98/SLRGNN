@@ -1,4 +1,3 @@
-# LR部分
 from utils import *
 import torch
 from torch import nn
@@ -27,7 +26,6 @@ class GroundTrainer(object):
         self.test_set = test_set
 
     def train(self, args):
-        # fix the parameters of pre-training
         self.model.entity_embedding.weight.requires_grad = False
         self.model.relation_embedding.weight.requires_grad = False
         self.model.rule_emb.weight.requires_grad = False
@@ -56,8 +54,6 @@ class GroundTrainer(object):
         best_valid_mrr = 0.0
         test_mrr = 0.0
 
-        # warm_up_steps = args.num_iters // 2
-        # current_learning_rate = float(args.g_lr)
 
         for k in range(args.num_iters):
 
@@ -65,16 +61,6 @@ class GroundTrainer(object):
             logging.info('-------------------------')
             logging.info('| Iteration: {}/{}'.format(k + 1, args.num_iters))
             logging.info('-------------------------')
-        
-            # if k >= warm_up_steps:
-
-            #     current_learning_rate = current_learning_rate / 10
-            #     logging.info('Change learning_rate to %f at step %d' % (current_learning_rate, k))
-            #     optim = torch.optim.Adam(
-            #         filter(lambda p: p.requires_grad, predictor.parameters()), 
-            #         lr=current_learning_rate
-            #     )
-            #     warm_up_steps = warm_up_steps * 3
 
             self.train_step( optimizer, train_dataloader, args.batch_per_epoch, args.smoothing, args.print_every)
             valid_mrr_iter = self.evaluate('valid', args.alpha, expectation=True)
@@ -176,9 +162,9 @@ class GroundTrainer(object):
                 all_t = all_t.cuda(device=self.device)
                 flag = flag.cuda(device=self.device)
 
-            logits, mask = model(all_h, all_r, None)  # important
-            kge_score = model.compute_g_KGE(all_h,all_r)  # important
-            logits += alpha * kge_score  # important
+            logits, mask = model(all_h, all_r, None)
+            kge_score = model.compute_g_KGE(all_h,all_r)
+            logits += alpha * kge_score
 
             concat_logits.append(logits)
             concat_all_h.append(all_h)
@@ -298,9 +284,6 @@ class PreTrainer(object):
 
     
     def train(self, args):
-        
-        # Set training configuration
-        
         triplets_dataloader = DataLoader(
             self.TripletSet,
             batch_size=args.batch_size,
@@ -388,7 +371,6 @@ class PreTrainer(object):
         negative_rule_score = model.compute_ruleE((positive_rule,  rule_mask, negative_idx, negative_rule), mode=mode_rule) 
 
         if args.negative_adversarial_sampling:
-            #In self-adversarial sampling, we do not apply back-propagation on the sampling weight
             negative_fact_score = (F.softmax(negative_fact_score * args.adversarial_temperature, dim = 1).detach() 
                               * F.logsigmoid(-negative_fact_score)).sum(dim = 1)
             negative_rule_score = (F.softmax(negative_rule_score * args.adversarial_temperature, dim = 1).detach() 
@@ -425,8 +407,6 @@ class PreTrainer(object):
 
         loss = loss_rule + loss_fact
 
-        # wandb.log({'train/loss_fact':loss_fact, 'train/loss_rule':loss_rule})
-        
         loss.backward()
 
         optimizer.step()
@@ -448,7 +428,7 @@ class PreTrainer(object):
         logging.info('>>>>> RuleE emb: Evaluating on {}'.format(split))
         
         test_set = getattr(self, "%s_set" % split)
-        # test_set = self.test_set_data
+
         dataloader = DataLoader(test_set, batch_size=1, num_workers=self.num_worker)
         model = self.model
 
@@ -458,7 +438,7 @@ class PreTrainer(object):
         concat_all_r = []
         concat_all_t = []
         concat_flag = []
-        # concat_mask = []
+
         for batch in dataloader:
             all_h, all_r, all_t, flag = batch
             all_h = all_h.squeeze(0)
